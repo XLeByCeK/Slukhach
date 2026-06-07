@@ -1,0 +1,14 @@
+# Telegram bot framework (async)
+aiogram>=3.13,<4
+
+# Source separation engine + deep learning backend
+demucs>=4.0.1
+torch>=2.2
+torchaudio>=2.2
+
+# Numeric audio processing
+numpy>=1.24
+soundfile>=0.12
+
+# Configuration
+python-dotenv>=1.0
