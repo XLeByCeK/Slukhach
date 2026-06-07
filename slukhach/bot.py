@@ -11,7 +11,7 @@ from aiogram import Bot, Dispatcher, F, Router
 from aiogram.filters import Command, CommandStart
 from aiogram.types import Audio, Document, FSInputFile, Message, Voice
 
-from .audio.pipeline import AudioPipeline
+from .audio.processor import Processor
 from .config import Settings
 
 logger = logging.getLogger(__name__)
@@ -45,9 +45,9 @@ def _extract_media(message: Message) -> Voice | Audio | Document | None:
 class BotHandlers:
     """Holds dependencies (settings + pipeline) and serves Telegram updates."""
 
-    def __init__(self, settings: Settings, pipeline: AudioPipeline) -> None:
+    def __init__(self, settings: Settings, processor: Processor) -> None:
         self._settings = settings
-        self._pipeline = pipeline
+        self._processor = processor
 
     async def on_start(self, message: Message) -> None:
         await message.answer(_WELCOME)
@@ -90,14 +90,14 @@ class BotHandlers:
         file = await bot.get_file(media.file_id)
         await bot.download_file(file.file_path, destination=source)
 
-        # Demucs is CPU/GPU bound and blocking; keep the event loop responsive.
-        return await asyncio.to_thread(self._pipeline.process, source, workdir)
+        # Processing is CPU/GPU bound and blocking; keep the event loop responsive.
+        return await asyncio.to_thread(self._processor.process, source, workdir)
 
 
-def build_dispatcher(settings: Settings, pipeline: AudioPipeline) -> Dispatcher:
+def build_dispatcher(settings: Settings, processor: Processor) -> Dispatcher:
     """Create a configured :class:`Dispatcher` with all handlers registered."""
 
-    handlers = BotHandlers(settings, pipeline)
+    handlers = BotHandlers(settings, processor)
     router = Router()
 
     router.message.register(handlers.on_start, CommandStart())

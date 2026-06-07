@@ -61,6 +61,39 @@ def decode_to_wav(source: Path, destination: Path, *, sample_rate: int) -> Path:
     return destination
 
 
+def apply_filters(
+    source: Path,
+    destination: Path,
+    filter_chain: str,
+    *,
+    codec: str = "libopus",
+    bitrate: str = "128k",
+) -> Path:
+    """Run an ffmpeg audio-filter chain and encode the result.
+
+    Args:
+        source: Path to the input audio file.
+        destination: Where the filtered/encoded output should be written.
+        filter_chain: A comma-separated ffmpeg ``-af`` filtergraph.
+        codec: Audio codec for the output (default Opus, for Telegram voice).
+        bitrate: Target bitrate.
+
+    Returns:
+        The ``destination`` path.
+    """
+
+    _run_ffmpeg(
+        [
+            "-i", str(source),
+            "-af", filter_chain,
+            "-c:a", codec,
+            "-b:a", bitrate,
+            str(destination),
+        ]
+    )
+    return destination
+
+
 def encode_to_ogg(source: Path, destination: Path, *, bitrate: str = "128k") -> Path:
     """Encode a WAV file into OGG/Opus suitable for sending back via Telegram.
 
