@@ -1,5 +1,3 @@
-"""Application entrypoint: run with ``python -m slukhach``."""
-
 from __future__ import annotations
 
 import asyncio
@@ -34,7 +32,6 @@ async def _run() -> None:
 
 
 def _build_processor(settings: Settings, logger: logging.Logger) -> Processor:
-    """Construct the processing strategy selected by ``PROCESSING_MODE``."""
 
     if settings.processing_mode == "enhance":
         logger.info("Using dynamics-based enhancement (no model download needed).")
@@ -47,7 +44,6 @@ def _build_processor(settings: Settings, logger: logging.Logger) -> Processor:
             noise_reduction_db=settings.noise_reduction_db,
         )
 
-    # Lazy import so the heavy torch/Demucs stack is only loaded when actually used.
     from .audio.pipeline import AudioPipeline
     from .audio.separator import VoiceSeparator
 

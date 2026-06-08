@@ -1,5 +1,3 @@
-"""Telegram bot wiring: receive an audio file, return the remixed version."""
-
 from __future__ import annotations
 
 import asyncio
@@ -31,7 +29,6 @@ _HELP = (
 
 
 def _extract_media(message: Message) -> Voice | Audio | Document | None:
-    """Return the first supported audio payload from a message, if any."""
 
     if message.voice is not None:
         return message.voice
@@ -43,7 +40,6 @@ def _extract_media(message: Message) -> Voice | Audio | Document | None:
 
 
 class BotHandlers:
-    """Holds dependencies (settings + pipeline) and serves Telegram updates."""
 
     def __init__(self, settings: Settings, processor: Processor) -> None:
         self._settings = settings
@@ -71,18 +67,13 @@ class BotHandlers:
         try:
             result_path = await self._handle_media(bot, media)
             await message.answer_voice(FSInputFile(result_path))
-        except Exception:  # noqa: BLE001 - surface a friendly error, log the details
+        except Exception: 
             logger.exception("Failed to process audio")
             await message.answer("⚠️ Не получилось обработать аудио. Попробуй другой файл.")
         finally:
             await status.delete()
 
     async def _handle_media(self, bot: Bot, media: Voice | Audio | Document) -> Path:
-        """Download the media, run the pipeline in a worker thread, return the result.
-
-        The result path lives in a temporary directory that is cleaned up by the
-        caller's event loop after the file has been sent.
-        """
 
         workdir = Path(tempfile.mkdtemp(prefix="slukhach_"))
         source = workdir / "input"
@@ -90,12 +81,11 @@ class BotHandlers:
         file = await bot.get_file(media.file_id)
         await bot.download_file(file.file_path, destination=source)
 
-        # Processing is CPU/GPU bound and blocking; keep the event loop responsive.
+
         return await asyncio.to_thread(self._processor.process, source, workdir)
 
 
 def build_dispatcher(settings: Settings, processor: Processor) -> Dispatcher:
-    """Create a configured :class:`Dispatcher` with all handlers registered."""
 
     handlers = BotHandlers(settings, processor)
     router = Router()
