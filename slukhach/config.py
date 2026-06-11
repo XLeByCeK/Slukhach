@@ -9,10 +9,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-PROCESSING_MODES = ("enhance", "separate")
 DEVICES = ("auto", "cpu", "cuda")
 
-_LOWERCASE_FIELDS = ("processing_mode", "device")
+_LOWERCASE_FIELDS = ("device",)
 
 
 class ConfigError(RuntimeError):
@@ -27,10 +26,9 @@ class Settings:
     bot_token: str
 
     # General
-    processing_mode: str = "enhance"
     max_file_size_mb: int = 20
 
-    # enhance mode
+    # enhance mode (mathematical filters)
     highpass_hz: float = 100.0
     compressor_threshold_db: float = -28.0
     compressor_ratio: float = 8.0
@@ -79,11 +77,6 @@ def _read_overrides() -> dict:
 
 def _validate(settings: Settings) -> None:
 
-    if settings.processing_mode not in PROCESSING_MODES:
-        raise ConfigError(
-            f"PROCESSING_MODE must be one of {list(PROCESSING_MODES)}, "
-            f"got {settings.processing_mode!r}."
-        )
     if settings.device not in DEVICES:
         raise ConfigError(f"DEVICE must be one of {list(DEVICES)}, got {settings.device!r}.")
 

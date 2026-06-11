@@ -32,6 +32,7 @@ class EnhancementProcessor:
         self._noise_reduction_db = noise_reduction_db
 
     def process(self, source: Path, workdir: Path) -> Path:
+        workdir.mkdir(parents=True, exist_ok=True)
         destination = workdir / "result.ogg"
         return io_utils.apply_filters(source, destination, self._build_filter_chain())
 

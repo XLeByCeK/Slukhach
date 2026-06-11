@@ -9,7 +9,7 @@ from aiogram import Bot, Dispatcher, F, Router
 from aiogram.filters import Command, CommandStart
 from aiogram.types import Audio, Document, FSInputFile, Message, Voice
 
-from .audio.processor import Processor
+from .audio.processor import ProcessingResult, Processor
 from .config import Settings
 
 logger = logging.getLogger(__name__)
@@ -17,14 +17,16 @@ logger = logging.getLogger(__name__)
 _WELCOME = (
     "👂 Привет! Я приглушаю основной голос и усиливаю задний фон,\n"
     "чтобы можно было расслышать, что происходит на фоне.\n\n"
-    "Просто пришли мне голосовое сообщение или аудиофайл."
+    "Пришли голосовое или аудиофайл — верну два варианта обработки:\n"
+    "математические фильтры и Demucs, чтобы можно было сравнить."
 )
 
 _HELP = (
     "Пришли аудио (голосовое, музыку или документ-аудио).\n"
-    "Я разделю запись на основной голос и фон, сделаю голос тише, "
-    "а фон громче, и верну результат.\n\n"
-    "Обработка может занять некоторое время — модель работает на CPU/GPU."
+    "Я верну два результата:\n"
+    "• математические фильтры — быстрая обработка без нейросети;\n"
+    "• Demucs — разделение голоса и фона через модель.\n\n"
+    "Обработка может занять некоторое время — Demucs работает на CPU/GPU."
 )
 
 
@@ -65,22 +67,28 @@ class BotHandlers:
 
         status = await message.answer("⏳ Обрабатываю... это может занять минуту.")
         try:
-            result_path = await self._handle_media(bot, media)
-            await message.answer_voice(FSInputFile(result_path))
-        except Exception: 
+            result = await self._handle_media(bot, media)
+            await message.answer_voice(
+                FSInputFile(result.enhance),
+                caption="🔢 Математические фильтры",
+            )
+            await message.answer_voice(
+                FSInputFile(result.separate),
+                caption="🎵 Demucs",
+            )
+        except Exception:
             logger.exception("Failed to process audio")
             await message.answer("⚠️ Не получилось обработать аудио. Попробуй другой файл.")
         finally:
             await status.delete()
 
-    async def _handle_media(self, bot: Bot, media: Voice | Audio | Document) -> Path:
+    async def _handle_media(self, bot: Bot, media: Voice | Audio | Document) -> ProcessingResult:
 
         workdir = Path(tempfile.mkdtemp(prefix="slukhach_"))
         source = workdir / "input"
 
         file = await bot.get_file(media.file_id)
         await bot.download_file(file.file_path, destination=source)
-
 
         return await asyncio.to_thread(self._processor.process, source, workdir)
 

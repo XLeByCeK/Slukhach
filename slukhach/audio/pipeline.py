@@ -25,6 +25,7 @@ class AudioPipeline:
         self._background_gain_db = background_gain_db
 
     def process(self, source: Path, workdir: Path) -> Path:
+        workdir.mkdir(parents=True, exist_ok=True)
 
         decoded_wav = io_utils.decode_to_wav(
             source,
