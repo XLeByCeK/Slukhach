@@ -8,7 +8,9 @@ import soundfile as sf
 import torch
 
 from . import io_utils, remixer
-from .separator import VoiceSeparator
+from .restoration import SpectralRestoration
+from .separator import BackgroundStems, VoiceSeparator
+from .speech_enhancer import SpeechEnhancer
 
 
 class AudioPipeline:
@@ -16,13 +18,19 @@ class AudioPipeline:
     def __init__(
         self,
         separator: VoiceSeparator,
+        speech_enhancer: SpeechEnhancer,
+        restoration: SpectralRestoration,
         *,
         foreground_gain_db: float,
         background_gain_db: float,
+        background_stems: BackgroundStems = "non_vocal",
     ) -> None:
         self._separator = separator
+        self._speech_enhancer = speech_enhancer
+        self._restoration = restoration
         self._foreground_gain_db = foreground_gain_db
         self._background_gain_db = background_gain_db
+        self._background_stems = background_stems
 
     def process(self, source: Path, workdir: Path) -> Path:
         workdir.mkdir(parents=True, exist_ok=True)
@@ -34,7 +42,7 @@ class AudioPipeline:
         )
 
         waveform = self._load_waveform(decoded_wav)
-        separated = self._separator.separate(waveform)
+        separated = self._separator.separate(waveform, background_stems=self._background_stems)
         mixed = remixer.remix(
             separated.foreground,
             separated.background,
@@ -42,8 +50,10 @@ class AudioPipeline:
             background_gain_db=self._background_gain_db,
         )
 
-        processed_wav = self._save_waveform(mixed, separated.sample_rate, workdir / "processed.wav")
-        return io_utils.encode_to_ogg(processed_wav, workdir / "result.ogg")
+        mixed_wav = self._save_waveform(mixed, separated.sample_rate, workdir / "mixed.wav")
+        enhanced_wav = self._speech_enhancer.enhance(mixed_wav, workdir / "enhanced.wav")
+        restored_wav = self._restoration.apply(enhanced_wav, workdir / "restored.wav")
+        return io_utils.encode_to_ogg(restored_wav, workdir / "result.ogg")
 
     @staticmethod
     def _load_waveform(wav_path: Path) -> torch.Tensor:

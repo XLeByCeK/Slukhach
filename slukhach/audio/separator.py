@@ -2,12 +2,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Literal
 
 import torch
 from demucs.apply import apply_model
 from demucs.pretrained import get_model
 
 _VOCALS_STEM = "vocals"
+_OTHER_STEM = "other"
+BackgroundStems = Literal["non_vocal", "other"]
 
 
 @dataclass(frozen=True)
@@ -43,7 +46,12 @@ class VoiceSeparator:
     def device(self) -> str:
         return self._device
 
-    def separate(self, waveform: torch.Tensor) -> SeparatedAudio:
+    def separate(
+        self,
+        waveform: torch.Tensor,
+        *,
+        background_stems: BackgroundStems = "non_vocal",
+    ) -> SeparatedAudio:
 
         batch = waveform.unsqueeze(0).to(self._device)
         with torch.no_grad():
@@ -53,10 +61,13 @@ class VoiceSeparator:
         vocals_index = sources.index(_VOCALS_STEM)
 
         foreground = stems[vocals_index]
-        background = torch.zeros_like(foreground)
-        for index, _name in enumerate(sources):
-            if index != vocals_index:
-                background += stems[index]
+        if background_stems == "other" and _OTHER_STEM in sources:
+            background = stems[sources.index(_OTHER_STEM)]
+        else:
+            background = torch.zeros_like(foreground)
+            for index, _name in enumerate(sources):
+                if index != vocals_index:
+                    background += stems[index]
 
         return SeparatedAudio(
             foreground=foreground.cpu(),

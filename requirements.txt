@@ -6,6 +6,12 @@ demucs>=4.0.1
 torch>=2.2
 torchaudio>=2.2
 
+# ASR (Whisper)
+faster-whisper>=1.0
+
+# Speech enhancement (optional; needs Rust on Python 3.13 — falls back to RNNoise)
+deepfilternet>=0.5.6; python_version < "3.13"
+
 # Numeric audio processing
 numpy>=1.24
 soundfile>=0.12

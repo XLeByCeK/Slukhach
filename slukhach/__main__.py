@@ -9,7 +9,10 @@ from .audio import io_utils
 from .audio.enhancer import EnhancementProcessor
 from .audio.pipeline import AudioPipeline
 from .audio.processor import DualProcessor, Processor
+from .audio.restoration import SpectralRestoration
 from .audio.separator import VoiceSeparator
+from .audio.speech_enhancer import SpeechEnhancer
+from .audio.transcriber import Transcriber
 from .bot import build_dispatcher
 from .config import ConfigError, Settings, load_settings
 
@@ -46,14 +49,34 @@ def _build_processor(settings: Settings, logger: logging.Logger) -> Processor:
 
     logger.info("Loading Demucs model %r...", settings.demucs_model)
     separator = VoiceSeparator(settings.demucs_model, settings.device)
-    logger.info("Model ready on device: %s", separator.device)
+    logger.info("Demucs ready on device: %s", separator.device)
+
+    speech_enhancer = SpeechEnhancer(settings.speech_enhancer)
+    logger.info("Speech enhancer backend: %s", speech_enhancer.active_backend)
+
+    restoration = SpectralRestoration(enabled=settings.restoration_enabled)
     demucs_pipeline = AudioPipeline(
         separator,
+        speech_enhancer,
+        restoration,
         foreground_gain_db=settings.vocal_gain_db,
         background_gain_db=settings.background_gain_db,
+        background_stems=settings.background_stems,
     )
 
-    return DualProcessor(enhancer, demucs_pipeline)
+    transcriber = Transcriber(
+        model_name=settings.whisper_model,
+        device_preference=settings.whisper_device,
+        enabled=settings.whisper_enabled,
+    )
+    if settings.whisper_enabled:
+        logger.info(
+            "Whisper ASR enabled (model=%s, device=%s) — loads on first audio request.",
+            settings.whisper_model,
+            transcriber.device,
+        )
+
+    return DualProcessor(enhancer, demucs_pipeline, transcriber=transcriber)
 
 
 def main() -> None:

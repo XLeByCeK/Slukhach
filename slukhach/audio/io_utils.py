@@ -53,15 +53,14 @@ def apply_filters(
     bitrate: str = "128k",
 ) -> Path:
 
-    _run_ffmpeg(
-        [
-            "-i", str(source),
-            "-af", filter_chain,
-            "-c:a", codec,
-            "-b:a", bitrate,
-            str(destination),
-        ]
-    )
+    args = ["-i", str(source), "-af", filter_chain]
+    if destination.suffix.lower() == ".wav":
+        args.extend(["-f", "wav", "-c:a", codec if codec != "libopus" else "pcm_s16le"])
+    else:
+        args.extend(["-c:a", codec, "-b:a", bitrate])
+    args.append(str(destination))
+
+    _run_ffmpeg(args)
     return destination
 
 
